@@ -1,3 +1,8 @@
+// Priverčiame naudoti Node.js serverless runtime (ne Edge)
+export const config = {
+  runtime: "nodejs"
+};
+
 export default async function handler(req, res) {
   const targetUrl = req.query.url;
 
@@ -7,8 +12,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Labai svarbu: kai kurie hostai blokuoja be Accept-Language/Referer
-    const resp = await fetch(targetUrl, {
+    const response = await fetch(targetUrl, {
       redirect: "follow",
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
@@ -18,22 +22,22 @@ export default async function handler(req, res) {
       }
     });
 
-    const text = await resp.text();
+    const text = await response.text();
 
-    // Grąžinam originalų statusą (padeda debuginti)
-    res.statusCode = resp.status;
+    res.statusCode = response.status;
 
-    // Content-Type: jei gaunam HTML - text/html; jei ne - text/plain
-    const ct = resp.headers.get("content-type") || "text/plain; charset=utf-8";
-    res.setHeader("Content-Type", ct);
+    const contentType =
+      response.headers.get("content-type") ||
+      "text/plain; charset=utf-8";
 
-    // Leisti Sheets / naršyklei skaityti
+    res.setHeader("Content-Type", contentType);
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Cache-Control", "no-store");
 
     return res.end(text);
+
   } catch (err) {
     res.statusCode = 500;
-    return res.end("Proxy error: " + (err && err.stack ? err.stack : String(err)));
+    return res.end("Proxy error: " + (err?.stack || String(err)));
   }
 }
